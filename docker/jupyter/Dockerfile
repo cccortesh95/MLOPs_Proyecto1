@@ -7,10 +7,9 @@ WORKDIR /app
 
 # Crear proyecto e instalar dependencias
 RUN uv init --no-readme && \
-    uv add jupyterlab pandas numpy scikit-learn matplotlib seaborn joblib
+    uv add jupyterlab pandas numpy scikit-learn matplotlib seaborn joblib \
+           mysql-connector-python boto3
 
-# Copiar dataset, notebook y módulo de entrenamiento
-COPY data/penguins_v1.csv /app/data/penguins_v1.csv
 COPY jupyter/notebooks/ /app/notebooks/
 
 # Crear directorio de modelos compartido

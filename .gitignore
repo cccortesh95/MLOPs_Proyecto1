@@ -205,3 +205,29 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# ── Carpetas generadas en runtime (MLOps) ────────────────────────────────────
+
+# Logs de Airflow (se crean al ejecutar)
+logs/
+
+# Datos crudos y procesados (se generan al correr pipelines)
+data/
+dataset/
+
+# Modelos entrenados y resultados
+models/
+results/
+
+# Reportes generados
+report/
+
+# Plugins de Airflow (vacío por defecto, se puebla en runtime)
+plugins/
+
+# Checkpoints de Jupyter
+.ipynb_checkpoints/
+
+# Caché de Python en dags y src
+dags/__pycache__/
+dags/**/__pycache__/

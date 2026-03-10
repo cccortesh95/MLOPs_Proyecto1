@@ -3,6 +3,7 @@ x-airflow-common:
   image: ${AIRFLOW_IMAGE_NAME:-penguins-airflow:latest}
   build:
     context: airflow
+    dockerfile: Dockerfile
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
@@ -28,6 +29,8 @@ x-airflow-common:
     redis:
       condition: service_healthy
     postgres:
+      condition: service_healthy
+    mysql:
       condition: service_healthy
 
 services:
@@ -261,20 +264,59 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
-  
+
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minio_user
+      MINIO_ROOT_PASSWORD: minio_password
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: always
+
   jupyter:
     build:
       context: ..
-      dockerfile: jupyter/Dockerfile
+      dockerfile: docker/jupyter/Dockerfile
     ports:
       - "8888:8888"
     volumes:
-      - shared_models:/app/models
-      - shared_report:/app/report
-      - shared_data:/app/data
-      - shared_results:/app/results
+      - ../models:/app/models
+      - ../report:/app/report
+      - ../data:/app/data
+      - ../results:/app/results
     environment:
       - JUPYTER_TOKEN=mlops12345
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=user1234
+      - MYSQL_DATABASE=mydatabase
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minio_user
+      - MINIO_SECRET_KEY=minio_password
+    depends_on:
+      mysql:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8888/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
 
   penguin-api:
     build:
@@ -286,6 +328,12 @@ services:
       - models_data:/app/models
     environment:
       MODELS_DIR: /app/models
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minio_user
+      MINIO_SECRET_KEY: minio_password
+    depends_on:
+      minio:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
       interval: 30s
@@ -298,3 +346,4 @@ volumes:
   postgres-db-volume:
   mysql_data:
   models_data:
+  minio_data:

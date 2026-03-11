@@ -4,6 +4,8 @@ x-airflow-common:
   build:
     context: airflow
     dockerfile: Dockerfile
+  networks:
+    - airflow-net
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
@@ -22,7 +24,6 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-..}/logs:/opt/airflow/logs
     - ${AIRFLOW_PROJ_DIR:-..}/plugins:/opt/airflow/plugins
     - ${AIRFLOW_PROJ_DIR:-..}/dataset:/opt/airflow/dataset
-    - models_data:/opt/airflow/models
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on
@@ -48,6 +49,8 @@ services:
       retries: 5
       start_period: 5s
     restart: always
+    networks:
+      - airflow-net
 
   redis:
     image: redis:latest
@@ -60,6 +63,8 @@ services:
       retries: 50
       start_period: 30s
     restart: always
+    networks:
+      - airflow-net
 
   airflow-webserver:
     <<: *airflow-common
@@ -209,7 +214,6 @@ services:
     user: "0:0"
     volumes:
       - ${AIRFLOW_PROJ_DIR:-..}:/sources
-      - models_data:/opt/airflow/models
 
   airflow-cli:
     <<: *airflow-common
@@ -264,6 +268,9 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    networks:
+      - airflow-net
+      - jupyter-net
 
   minio:
     image: minio/minio
@@ -283,6 +290,9 @@ services:
       retries: 5
       start_period: 10s
     restart: always
+    networks:
+      - storage-net
+      - jupyter-net
 
   jupyter:
     build:
@@ -317,15 +327,15 @@ services:
       retries: 5
       start_period: 30s
     restart: always
+    networks:
+      - jupyter-net
 
-  penguin-api:
+  api:
     build:
       context: ..
       dockerfile: docker/api/Dockerfile
     ports:
       - "8989:8000"
-    volumes:
-      - models_data:/app/models
     environment:
       MODELS_DIR: /app/models
       MINIO_ENDPOINT: minio:9000
@@ -341,9 +351,15 @@ services:
       retries: 5
       start_period: 15s
     restart: always
+    networks:
+      - storage-net
 
 volumes:
   postgres-db-volume:
   mysql_data:
-  models_data:
   minio_data:
+
+networks:
+  airflow-net:    # Airflow + postgres + redis + mysql
+  storage-net:    # api + minio
+  jupyter-net:    # jupyter + mysql + minio

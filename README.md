@@ -59,6 +59,24 @@ graph TD
     API -->|MINIO_ENDPOINT| MN
 ```
 
+## Redes Docker
+
+La infraestructura usa tres redes internas para aislar la comunicación entre servicios:
+
+| Red | Servicios | Propósito |
+|-----|-----------|-----------|
+| `airflow-net` | postgres, redis, mysql, airflow-* | Red interna de Airflow |
+| `storage-net` | minio, api | Aísla la API — solo puede ver MinIO |
+| `jupyter-net` | mysql, minio, jupyter | Jupyter accede a MySQL y MinIO |
+
+```
+airflow-net:  postgres ── redis ── mysql ── airflow-webserver/scheduler/worker/triggerer
+storage-net:  minio ── api
+jupyter-net:  mysql ── minio ── jupyter
+```
+
+`api` está exclusivamente en `storage-net`, por lo que no puede resolver por DNS ningún otro servicio (mysql, postgres, redis, airflow). Solo tiene acceso a `minio`.
+
 ## Reglas de Conectividad
 
 | Servicio Origen | Servicio Destino | Tipo de Acceso |

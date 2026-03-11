@@ -231,3 +231,5 @@ plugins/
 # Caché de Python en dags y src
 dags/__pycache__/
 dags/**/__pycache__/
+
+.kiro/
